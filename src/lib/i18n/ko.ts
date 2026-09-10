@@ -358,6 +358,7 @@ export const ko: Record<TranslationKey, string> = {
   "recorder.error.dismiss": "닫기",
 
   "library.back": "뒤로",
+  "library.newRecording": "새 녹화",
 
   "library.search.placeholder": "이름으로 검색…",
   "library.search.filter": "필터",

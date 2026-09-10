@@ -63,6 +63,7 @@ macro_rules! command_handlers {
             $crate::windows::set_annotation_display_follow,
             $crate::windows::open_library,
             $crate::windows::open_editor,
+            $crate::windows::open_recorder,
             $crate::windows::present_window,
             $crate::commands::captions::get_whisper_model_status,
             $crate::commands::captions::download_whisper_model,

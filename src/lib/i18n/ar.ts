@@ -361,6 +361,7 @@ export const ar: Record<TranslationKey, string> = {
   "recorder.error.dismiss": "إغلاق",
 
   "library.back": "رجوع",
+  "library.newRecording": "تسجيل جديد",
 
   "library.search.placeholder": "البحث بالاسم…",
   "library.search.filter": "تصفية",

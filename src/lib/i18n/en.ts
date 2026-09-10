@@ -356,6 +356,7 @@ export const en = {
   "recorder.error.dismiss": "Dismiss",
 
   "library.back": "Back",
+  "library.newRecording": "New recording",
 
   "library.search.placeholder": "Search by name…",
   "library.search.filter": "Filter",

@@ -348,6 +348,7 @@ export const zh: Record<TranslationKey, string> = {
   "recorder.error.dismiss": "关闭",
 
   "library.back": "返回",
+  "library.newRecording": "新建录制",
 
   "library.search.placeholder": "按名称搜索…",
   "library.search.filter": "筛选",

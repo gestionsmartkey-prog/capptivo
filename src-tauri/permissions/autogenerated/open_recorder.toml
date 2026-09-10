@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-recorder"
+description = "Enables the open_recorder command without any pre-configured scope."
+commands.allow = ["open_recorder"]
+
+[[permission]]
+identifier = "deny-open-recorder"
+description = "Denies the open_recorder command without any pre-configured scope."
+commands.deny = ["open_recorder"]
