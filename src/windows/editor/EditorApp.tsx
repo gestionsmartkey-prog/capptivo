@@ -183,6 +183,12 @@ export function EditorApp() {
     setShell("library");
   }, []);
 
+  /** Re-open the recorder bar without quitting the app ("New recording"). */
+  const startNewRecording = useCallback(() => {
+    useEditorStore.getState().setPlaying(false);
+    void commands.openRecorder().catch(() => undefined);
+  }, []);
+
   const openProject = useCallback(
     async (id: string) => {
       await init(id);
@@ -250,6 +256,7 @@ export function EditorApp() {
       <div className="flex h-screen min-h-0 flex-col bg-background text-foreground">
         <EditorTitleBar
           title={windowTitle}
+          onNewRecording={startNewRecording}
           renameSeed={project?.title?.trim() ?? ""}
           onRename={renameTitle}
           exportError={exportError}

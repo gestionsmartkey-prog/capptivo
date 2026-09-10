@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { MoreHorizontal, Search, Trash2, X } from "lucide-react";
+import { MoreHorizontal, Search, Trash2, Video, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -127,6 +127,11 @@ export function RecordingsLibrary({ currentProjectId, onOpenProject }: Recording
     searchRef.current?.focus();
   }, []);
 
+  /** Re-open the recorder bar without restarting the app. */
+  const startNewRecording = useCallback(() => {
+    void commands.openRecorder().catch(() => undefined);
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const list = await commands.listProjects();
@@ -161,10 +166,18 @@ export function RecordingsLibrary({ currentProjectId, onOpenProject }: Recording
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
       <header className="mx-auto w-full max-w-6xl shrink-0 px-8 pb-2 pt-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Recordings</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your videos stay on this device. Click a recording to open the editor.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Recordings</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your videos stay on this device. Click a recording to open the editor.
+            </p>
+          </div>
+          <Button type="button" onClick={startNewRecording} className="shrink-0 gap-2">
+            <Video className="size-4" aria-hidden />
+            {t("library.newRecording")}
+          </Button>
+        </div>
       </header>
 
       <div className="mx-auto w-full max-w-6xl flex-1 px-8 pb-12 pt-6">
@@ -218,9 +231,15 @@ export function RecordingsLibrary({ currentProjectId, onOpenProject }: Recording
         ) : null}
 
         {projects.length === 0 ? (
-          <p className="py-20 text-center text-sm text-muted-foreground">
-            No recordings yet. Capture from the menubar tray, then come back here.
-          </p>
+          <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <p className="text-sm text-muted-foreground">
+              No recordings yet. Start a new recording to capture your screen.
+            </p>
+            <Button type="button" onClick={startNewRecording} className="gap-2">
+              <Video className="size-4" aria-hidden />
+              {t("library.newRecording")}
+            </Button>
+          </div>
         ) : filteredProjects.length === 0 ? (
           <p className="py-20 text-center text-sm text-muted-foreground">
             {t("library.search.noMatch")}

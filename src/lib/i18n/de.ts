@@ -363,6 +363,7 @@ export const de: Record<TranslationKey, string> = {
   "recorder.error.dismiss": "Schließen",
 
   "library.back": "Zurück",
+  "library.newRecording": "Neue Aufnahme",
 
   "library.search.placeholder": "Nach Namen suchen…",
   "library.search.filter": "Filtern",

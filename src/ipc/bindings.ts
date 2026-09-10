@@ -125,6 +125,8 @@ export const commands = {
     invoke<void>("set_annotation_display_follow", { follow }),
   openLibrary: () => invoke<void>("open_library"),
   openEditor: (projectId: string) => invoke<void>("open_editor", { projectId }),
+  /** Re-open the recorder bar from the editor/library ("New recording"). */
+  openRecorder: () => invoke<void>("open_recorder"),
   presentWindow: () => invoke<void>("present_window"),
 
   getWhisperModelStatus: () =>

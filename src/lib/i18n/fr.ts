@@ -371,6 +371,7 @@ export const fr: Record<TranslationKey, string> = {
   "recorder.error.dismiss": "Fermer",
 
   "library.back": "Retour",
+  "library.newRecording": "Nouvel enregistrement",
 
   "library.search.placeholder": "Rechercher par nom…",
   "library.search.filter": "Filtrer",

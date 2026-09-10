@@ -52,6 +52,7 @@ fn main() {
         "set_annotation_display_follow",
         "open_library",
         "open_editor",
+        "open_recorder",
         "present_window",
         // captions
         "get_whisper_model_status",

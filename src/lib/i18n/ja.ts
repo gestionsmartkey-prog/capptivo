@@ -358,6 +358,7 @@ export const ja: Record<TranslationKey, string> = {
   "recorder.error.dismiss": "閉じる",
 
   "library.back": "戻る",
+  "library.newRecording": "新規録画",
 
   "library.search.placeholder": "名前で検索…",
   "library.search.filter": "フィルター",

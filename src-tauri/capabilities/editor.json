@@ -52,6 +52,7 @@
     "allow-remove-temp-file",
     "allow-present-window",
     "allow-open-editor",
+    "allow-open-recorder",
     "allow-reveal-error-log",
     "allow-reveal-logs-dir",
     "allow-check-for-updates",

@@ -6,7 +6,7 @@
  */
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowLeft, Bug, Minus, Square, X } from "lucide-react";
+import { ArrowLeft, Bug, Minus, Square, Video, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,8 @@ type Props = {
   title: string;
   /** When set, a back button leads the bar (library shell with a project open). */
   onBack?: () => void;
+  /** When set, a "New recording" button re-opens the recorder bar (editor shell). */
+  onNewRecording?: () => void;
   /** When set, title is click-to-edit. Empty string clears the saved title. */
   onRename?: (next: string) => void;
   /** Value seeded into the input (use "" for untitled so the field starts empty). */
@@ -192,6 +194,7 @@ function EditableTitle({
 export function EditorTitleBar({
   title,
   onBack,
+  onNewRecording,
   onRename,
   renameSeed,
   exportError = null,
@@ -228,18 +231,32 @@ export function EditorTitleBar({
         aria-hidden
       />
 
-      {onBack ? (
-        <div className="relative z-10 mr-auto flex items-center">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="pointer-events-auto gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={onBack}
-          >
-            <ArrowLeft className="size-4" aria-hidden />
-            {t("library.back")}
-          </Button>
+      {onBack || onNewRecording ? (
+        <div className="relative z-10 mr-auto flex items-center gap-1">
+          {onBack ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="pointer-events-auto gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={onBack}
+            >
+              <ArrowLeft className="size-4" aria-hidden />
+              {t("library.back")}
+            </Button>
+          ) : null}
+          {onNewRecording ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="pointer-events-auto gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={onNewRecording}
+            >
+              <Video className="size-4" aria-hidden />
+              {t("library.newRecording")}
+            </Button>
+          ) : null}
         </div>
       ) : null}
 

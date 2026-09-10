@@ -2111,6 +2111,25 @@ pub fn open_editor(app: AppHandle, project_id: String) -> tauri::Result<()> {
     open_editor_window(&app, &project_id)
 }
 
+/// Show the recorder bar from another window — the editor / library "New
+/// recording" button. Stopping a take hides the bar and opens the editor, so
+/// without this the only way back to the recorder is the tray or the global
+/// hotkey (and the hotkey is unavailable on Wayland).
+///
+/// Deferred to a fresh UI-thread turn: in the normal flow the bar WebView still
+/// exists (hidden) and this just shows it, but on the rare path where it must be
+/// rebuilt, creating a WebView inside a sync invoke from the editor WebView is
+/// the same Windows-unsafe pattern [`open_library`] / [`open_editor`] avoid.
+#[tauri::command]
+pub fn open_recorder(app: AppHandle) -> tauri::Result<()> {
+    defer_on_ui(app, |app| {
+        if let Err(e) = show_recorder_popover(app) {
+            tracing::warn!(%e, "failed to open recorder from editor");
+        }
+    });
+    Ok(())
+}
+
 /// Open (or focus) the editor window for a project. Switches the app to a
 /// Dock-visible `Regular` activation policy on macOS.
 ///

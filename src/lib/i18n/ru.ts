@@ -361,6 +361,7 @@ export const ru: Record<TranslationKey, string> = {
   "recorder.error.dismiss": "Закрыть",
 
   "library.back": "Назад",
+  "library.newRecording": "Новая запись",
 
   "library.search.placeholder": "Поиск по имени…",
   "library.search.filter": "Фильтр",
