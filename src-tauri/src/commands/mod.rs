@@ -34,6 +34,7 @@ macro_rules! command_handlers {
             $crate::commands::recording::resume_recording,
             $crate::commands::recording::set_recording_mic_muted,
             $crate::commands::recording::stop_recording,
+            $crate::commands::recording::cancel_recording,
             $crate::commands::recording::pick_capture_area,
             $crate::commands::recording::complete_area_pick,
             $crate::commands::recording::cancel_area_pick,

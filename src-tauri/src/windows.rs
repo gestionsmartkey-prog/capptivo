@@ -29,6 +29,11 @@ pub const EDITOR_LABEL_PREFIX: &str = "editor:";
 
 /// Frontend listens on this channel to swap the editor shell to the recordings grid.
 pub const SHOW_LIBRARY_EVENT: &str = "shell://show-library";
+/// A global recorder-control hotkey fired — payload is the action name
+/// (`start` / `stop` / `pause` / `cancel` / `mic` / `camera` / `system-audio`).
+/// The recorder WebView owns source selection and the capture flow, so the
+/// action is dispatched there; `start` / `new` surface the bar in Rust first.
+pub const RECORDER_HOTKEY_EVENT: &str = "recorder://hotkey";
 /// Annotation overlay shown/hidden — payload `true` on show, `false` on hide.
 /// The overlay WebView is reused (show/hide, never closed), so its idle
 /// cursor-poll would otherwise keep running while hidden; it gates on this.
@@ -1335,6 +1340,33 @@ pub fn toggle_recorder_popover(app: &AppHandle) -> tauri::Result<()> {
         }
     }
     show_recorder_popover(app)
+}
+
+/// Route a global recorder-control hotkey (registered in `lib.rs`). `start` and
+/// `new` make sure the bar is on screen first — everything else is dispatched to
+/// the recorder WebView, which holds the source selection and capture actions.
+pub fn handle_recorder_hotkey(app: &AppHandle, action: &str) {
+    match action {
+        // Surface the bar so the take is visible (it is capture-excluded, so it
+        // never lands in the recording), then let the recorder start.
+        "start" => {
+            if let Err(e) = show_recorder_popover(app) {
+                tracing::warn!(%e, "hotkey start: failed to show recorder");
+            }
+            let _ = app.emit(RECORDER_HOTKEY_EVENT, action);
+        }
+        // "New recording" — same as the editor button: just surface the setup bar.
+        "new" => {
+            if let Err(e) = show_recorder_popover(app) {
+                tracing::warn!(%e, "hotkey new: failed to show recorder");
+            }
+        }
+        // Stop / pause / cancel / mic / camera / system-audio act on state the
+        // recorder WebView owns; it is alive whether or not the bar is visible.
+        _ => {
+            let _ = app.emit(RECORDER_HOTKEY_EVENT, action);
+        }
+    }
 }
 
 fn create_recorder_popover(app: &AppHandle) -> tauri::Result<()> {

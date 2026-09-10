@@ -22,6 +22,7 @@
     "allow-resume-recording",
     "allow-set-recording-mic-muted",
     "allow-stop-recording",
+    "allow-cancel-recording",
     "allow-pick-capture-area",
     "allow-show-area-frame-guide",
     "allow-hide-area-frame-guide",

@@ -64,6 +64,8 @@ export const commands = {
   setRecordingMicMuted: (muted: boolean) =>
     invoke<void>("set_recording_mic_muted", { muted }),
   stopRecording: () => invoke<string>("stop_recording"),
+  /** Stop capture and discard the take (delete it, no editor). */
+  cancelRecording: () => invoke<void>("cancel_recording"),
   pickCaptureArea: () => invoke<CaptureAreaSelection>("pick_capture_area"),
   completeAreaPick: (x: number, y: number, width: number, height: number) =>
     invoke<void>("complete_area_pick", { x, y, width, height }),

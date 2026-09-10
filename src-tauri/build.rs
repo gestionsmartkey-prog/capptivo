@@ -23,6 +23,7 @@ fn main() {
         "resume_recording",
         "set_recording_mic_muted",
         "stop_recording",
+        "cancel_recording",
         "pick_capture_area",
         "complete_area_pick",
         "cancel_area_pick",
