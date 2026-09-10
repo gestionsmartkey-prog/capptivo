@@ -78,8 +78,23 @@ use tauri::Manager;
 // use tracing_appender::non_blocking::WorkerGuard;
 // static LOG_GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 
-/// Global start/stop-and-show hotkey for the recorder popover.
+/// Global show/hide hotkey for the recorder popover.
 const RECORDER_HOTKEY: &str = "Alt+Shift+R";
+
+/// System-wide recorder-control hotkeys → action names dispatched by
+/// [`windows::handle_recorder_hotkey`]. `Ctrl+Shift+F{n}` is deliberate: it
+/// dodges Chrome / Windows shortcuts and stays clear of AltGr on LATAM
+/// keyboards, so the whole start → stop → new loop can be driven from any app.
+const RECORDER_HOTKEYS: &[(&str, &str)] = &[
+    ("Ctrl+Shift+F9", "start"),
+    ("Ctrl+Shift+F10", "stop"),
+    ("Ctrl+Shift+F8", "pause"),
+    ("Ctrl+Shift+F7", "cancel"),
+    ("Ctrl+Shift+F6", "new"),
+    ("Ctrl+Shift+F5", "mic"),
+    ("Ctrl+Shift+F4", "camera"),
+    ("Ctrl+Shift+F3", "system-audio"),
+];
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -113,6 +128,7 @@ pub fn run() {
             app.manage(area_picker::AreaPickState::new());
             tray::build(&handle)?;
             register_global_hotkey(&handle);
+            register_recorder_hotkeys(&handle);
 
             std::thread::Builder::new()
                 .name("encoder-probe-warm".into())
@@ -175,6 +191,29 @@ fn register_global_hotkey(app: &tauri::AppHandle) {
     });
     if let Err(e) = result {
         tracing::warn!(%e, hotkey = RECORDER_HOTKEY, "failed to register global hotkey");
+    }
+}
+
+/// Register the system-wide recorder-control hotkeys. Each is best-effort:
+/// registration fails on Wayland (no global-shortcut portal) and if another app
+/// already owns the combo, and a warning is the right outcome either way — the
+/// tray menu and in-bar controls still work.
+fn register_recorder_hotkeys(app: &tauri::AppHandle) {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+    for (accel, action) in RECORDER_HOTKEYS {
+        let action = *action;
+        let result = app
+            .global_shortcut()
+            .on_shortcut(*accel, move |app, _shortcut, event| {
+                // Fire once, on key-down.
+                if event.state() == ShortcutState::Pressed {
+                    windows::handle_recorder_hotkey(app, action);
+                }
+            });
+        if let Err(e) = result {
+            tracing::warn!(%e, hotkey = *accel, "failed to register recorder hotkey");
+        }
     }
 }
 

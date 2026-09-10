@@ -121,6 +121,8 @@ interface RecorderStore {
   prewarmCapture: () => Promise<void>;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
+  /** Stop capture and throw the take away (no editor, project deleted). */
+  cancelRecording: () => Promise<void>;
   togglePause: () => Promise<void>;
 }
 
@@ -296,6 +298,40 @@ export const useRecorderStore = create<RecorderStore>((set, get) => {
       // Bar reopened — re-warm mic if still selected (Rust cools on dismiss).
       void listen("recorder://shown", () => {
         get().syncMicWarm();
+      });
+      // Global recorder-control hotkeys (registered in Rust `lib.rs`). Rust
+      // surfaces the bar for `start` / `new`; the rest are dispatched here off
+      // the live state, since this store owns the capture flow and toggles.
+      void listen<string>("recorder://hotkey", (e) => {
+        const s = get();
+        const status = s.state.status;
+        const live = status === "recording" || status === "paused";
+        switch (e.payload) {
+          case "start":
+            // Immediate start (no countdown) for deterministic automation.
+            if (status === "idle" || status === "error") void s.startRecording();
+            break;
+          case "stop":
+            if (live) void s.stopRecording();
+            break;
+          case "pause":
+            if (live) void s.togglePause();
+            break;
+          case "cancel":
+            if (live) void s.cancelRecording();
+            break;
+          case "mic":
+            // Live take → mute/unmute the running track; otherwise arm/disarm.
+            if (live) s.toggleMicMute();
+            else s.setMicEnabled(!s.micEnabled);
+            break;
+          case "camera":
+            s.setCameraEnabled(!s.cameraEnabled);
+            break;
+          case "system-audio":
+            s.setOption("captureSystemAudio", !s.options.captureSystemAudio);
+            break;
+        }
       });
       if (typeof navigator !== "undefined" && navigator.mediaDevices) {
         navigator.mediaDevices.addEventListener("devicechange", () => {
@@ -798,6 +834,24 @@ export const useRecorderStore = create<RecorderStore>((set, get) => {
       void commands.hideAreaFrameGuide().catch(() => undefined);
       void commands.hideCameraPreview().catch(() => undefined);
       set({ annotationVisible: false, micSessionMuted: false });
+    } catch (e) {
+      reportError(describeError(e));
+      set({ annotationVisible: false, micSessionMuted: false });
+    } finally {
+      stopping = false;
+    }
+  },
+
+  async cancelRecording() {
+    // Shares the `stopping` latch with stopRecording so a cancel and a stop
+    // can't race the same teardown. No camera flush — the take is discarded.
+    if (stopping) return;
+    stopping = true;
+    try {
+      await commands.cancelRecording();
+      void commands.hideAreaFrameGuide().catch(() => undefined);
+      void commands.hideCameraPreview().catch(() => undefined);
+      set({ annotationVisible: false, micSessionMuted: false, lastError: null });
     } catch (e) {
       reportError(describeError(e));
       set({ annotationVisible: false, micSessionMuted: false });

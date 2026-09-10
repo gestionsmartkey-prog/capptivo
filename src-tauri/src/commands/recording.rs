@@ -398,6 +398,54 @@ pub async fn stop_recording(app: AppHandle, state: State<'_, AppState>) -> AppRe
     Ok(project.id)
 }
 
+/// Stop capture and **discard** the take — retire the session, delete the
+/// in-progress project, and flip back to the setup bar without opening the
+/// editor. Bound to the cancel/discard hotkey. Best-effort: capture is always
+/// torn down and the session retired even if the encode stop or the delete
+/// reports an error, so a cancel can never wedge the next `start_recording`.
+#[tauri::command]
+pub async fn cancel_recording(app: AppHandle, state: State<'_, AppState>) -> AppResult<()> {
+    // Same read-don't-take discipline as `stop_recording`: the session guard is
+    // what blocks a second start, so it must outlive the capture teardown.
+    let current = state
+        .current_project
+        .lock()
+        .clone()
+        .ok_or(AppError::NotRecording)?;
+    let project_id = current.id.clone();
+
+    let recorder = state.recorder.clone();
+    let store = state.store.clone();
+
+    // Halt capture. We throw the artifacts away, but the encode thread still has
+    // to be joined so the files are closed before we delete the directory.
+    let stopped = tauri::async_runtime::spawn_blocking(move || recorder.stop())
+        .await
+        .map_err(|e| AppError::Other(format!("cancel stop task failed: {e}")));
+
+    // Retire the session on every path — a failed stop must not leave the app
+    // believing it is still recording.
+    let _ = state.current_project.lock().take();
+    let _ = state.camera_sink.lock().take();
+
+    // Tear the HUD / overlays down and drop capture exclusion, then return the
+    // bar to setup so the next take can start straight away. No editor, no
+    // finalize — the take is being discarded.
+    let _ = windows::restore_recorder_setup_layout(&app);
+    let _ = windows::hide_annotation_overlay(app.clone());
+    let _ = windows::dismiss_camera_preview(app.clone());
+    crate::area_picker::hide_area_frame_guide(&app);
+    windows::set_capture_exclusion(&app, false);
+
+    if let Err(e) = store.delete(&project_id) {
+        tracing::warn!(%e, project = %project_id, "failed to delete cancelled recording");
+    }
+    if let Err(e) = stopped.and_then(|r| r) {
+        tracing::warn!(%e, project = %project_id, "recorder stop reported an error during cancel");
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn pick_capture_area(
     app: AppHandle,
