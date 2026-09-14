@@ -96,13 +96,45 @@ const RECORDER_HOTKEYS: &[(&str, &str)] = &[
     ("Ctrl+Shift+F3", "system-audio"),
 ];
 
+/// Parse `--action <name>` / `--action=<name>` out of a forwarded command line,
+/// accepting only known recorder actions so a stray argument can't emit garbage.
+/// This is the non-keystroke automation channel: `Capptivo.exe --action stop`
+/// launches a throwaway second process, the single-instance plugin hands its
+/// argv to the running app, and it exits.
+fn recorder_action_from_argv(argv: &[String]) -> Option<String> {
+    let mut it = argv.iter();
+    while let Some(arg) = it.next() {
+        let candidate = if let Some(v) = arg.strip_prefix("--action=") {
+            Some(v.to_string())
+        } else if arg == "--action" {
+            it.next().cloned()
+        } else {
+            None
+        };
+        if let Some(action) = candidate {
+            if RECORDER_HOTKEYS.iter().any(|(_, a)| *a == action) {
+                return Some(action);
+            }
+        }
+    }
+    None
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     init_tracing();
 
     tauri::Builder::default()
         // Must register first — later plugins depend on the single-instance lock order.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            // `Capptivo.exe --action <name>` from a second launch is forwarded here
+            // over the single-instance IPC and drives the recorder exactly like the
+            // global hotkeys — but without injected keystrokes, so it works for
+            // automation that Windows' input hooks / UIPI would otherwise block.
+            if let Some(action) = recorder_action_from_argv(&argv) {
+                windows::handle_recorder_hotkey(app, &action);
+                return;
+            }
             if let Err(e) = windows::show_recorder_popover(app) {
                 tracing::warn!(%e, "single-instance: failed to show recorder");
             }
@@ -251,4 +283,50 @@ fn init_tracing() {
         .try_init();
 
     // tracing::info!(dir = %dir.display(), "file logging enabled");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::recorder_action_from_argv;
+
+    fn argv(args: &[&str]) -> Vec<String> {
+        args.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn parses_space_and_equals_forms() {
+        assert_eq!(
+            recorder_action_from_argv(&argv(&["Capptivo.exe", "--action", "start"])),
+            Some("start".into())
+        );
+        assert_eq!(
+            recorder_action_from_argv(&argv(&["Capptivo.exe", "--action=stop"])),
+            Some("stop".into())
+        );
+    }
+
+    #[test]
+    fn every_hotkey_action_is_accepted() {
+        for (_, action) in super::RECORDER_HOTKEYS {
+            assert_eq!(
+                recorder_action_from_argv(&argv(&["Capptivo.exe", "--action", action])),
+                Some((*action).into()),
+                "action {action} should be accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_or_missing_action() {
+        assert_eq!(recorder_action_from_argv(&argv(&["Capptivo.exe"])), None);
+        assert_eq!(
+            recorder_action_from_argv(&argv(&["Capptivo.exe", "--action", "explode"])),
+            None
+        );
+        // `--action` with no value must not panic or consume a bogus flag.
+        assert_eq!(
+            recorder_action_from_argv(&argv(&["Capptivo.exe", "--action"])),
+            None
+        );
+    }
 }
