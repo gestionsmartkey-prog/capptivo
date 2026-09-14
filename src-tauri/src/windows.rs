@@ -1342,10 +1342,16 @@ pub fn toggle_recorder_popover(app: &AppHandle) -> tauri::Result<()> {
     show_recorder_popover(app)
 }
 
-/// Route a global recorder-control hotkey (registered in `lib.rs`). `start` and
-/// `new` make sure the bar is on screen first — everything else is dispatched to
-/// the recorder WebView, which holds the source selection and capture actions.
-pub fn handle_recorder_hotkey(app: &AppHandle, action: &str) {
+/// Route a recorder-control action from a global hotkey or the `--action` CLI
+/// (both registered in `lib.rs`). `start` / `new` make sure the bar is on screen
+/// first; everything else is dispatched to the recorder WebView, which holds the
+/// source selection and capture actions.
+///
+/// `automation` is true for the `--action` CLI channel (a headless driver) and
+/// false for a physical hotkey. The only behavioral difference is `stop`:
+/// automation saves silently (no editor window, no focus steal), while a manual
+/// stop opens the editor for review.
+pub fn handle_recorder_hotkey(app: &AppHandle, action: &str, automation: bool) {
     match action {
         // Surface the bar so the take is visible (it is capture-excluded, so it
         // never lands in the recording), then let the recorder start.
@@ -1361,8 +1367,25 @@ pub fn handle_recorder_hotkey(app: &AppHandle, action: &str) {
                 tracing::warn!(%e, "hotkey new: failed to show recorder");
             }
         }
-        // Stop / pause / cancel / mic / camera / system-audio act on state the
-        // recorder WebView owns; it is alive whether or not the bar is visible.
+        // Automation stop saves silently — no editor, no focus steal — so an
+        // unattended loop isn't derailed by a window popping up. Done in Rust
+        // (like the tray stop) rather than via the WebView.
+        "stop" if automation => {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                let Some(state) = app.try_state::<crate::state::AppState>() else {
+                    return;
+                };
+                if let Err(e) =
+                    crate::commands::recording::do_stop_recording(app.clone(), state, false).await
+                {
+                    tracing::warn!(%e, "automation stop failed");
+                }
+            });
+        }
+        // Stop (manual) / pause / cancel / mic / camera / system-audio act on
+        // state the recorder WebView owns; it is alive whether or not the bar is
+        // visible.
         _ => {
             let _ = app.emit(RECORDER_HOTKEY_EVENT, action);
         }
