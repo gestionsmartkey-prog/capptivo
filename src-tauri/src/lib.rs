@@ -57,6 +57,7 @@ mod area_picker {
     }
     pub fn hide_area_frame_guide(_app: &AppHandle) {}
 }
+mod automation;
 mod backgrounds;
 mod cursor;
 mod error;
@@ -132,7 +133,7 @@ pub fn run() {
             // global hotkeys — but without injected keystrokes, so it works for
             // automation that Windows' input hooks / UIPI would otherwise block.
             if let Some(action) = recorder_action_from_argv(&argv) {
-                windows::handle_recorder_hotkey(app, &action);
+                windows::handle_recorder_hotkey(app, &action, true);
                 return;
             }
             if let Err(e) = windows::show_recorder_popover(app) {
@@ -238,9 +239,10 @@ fn register_recorder_hotkeys(app: &tauri::AppHandle) {
         let result = app
             .global_shortcut()
             .on_shortcut(*accel, move |app, _shortcut, event| {
-                // Fire once, on key-down.
+                // Fire once, on key-down. Physical hotkey → not automation, so
+                // a manual stop still opens the editor for review.
                 if event.state() == ShortcutState::Pressed {
-                    windows::handle_recorder_hotkey(app, action);
+                    windows::handle_recorder_hotkey(app, action, false);
                 }
             });
         if let Err(e) = result {

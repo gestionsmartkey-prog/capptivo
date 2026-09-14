@@ -272,11 +272,26 @@ pub async fn finish_camera_file(state: State<'_, AppState>) -> AppResult<Option<
 }
 
 /// Stop capture, finalize the project on disk, open the editor, and return the
-/// project id. Screen capture must finish before the editor is shown — the
-/// editor is intentionally capturable (for Capptivo demos), so opening it
-/// while SCK is still live would paint the shell into the last frames.
+/// project id. Manual stops (HUD button, hotkey, tray) land here.
 #[tauri::command]
 pub async fn stop_recording(app: AppHandle, state: State<'_, AppState>) -> AppResult<String> {
+    do_stop_recording(app, state, true).await
+}
+
+/// Stop capture and finalize the project on disk, returning the project id.
+///
+/// Screen capture must finish before the editor is shown — the editor is
+/// intentionally capturable (for Capptivo demos), so opening it while SCK is
+/// still live would paint the shell into the last frames.
+///
+/// `open_editor` is true for manual stops (review the take in the editor) and
+/// false for the automation `--action stop` path, which saves silently so an
+/// unattended recording loop is never derailed by a window stealing focus.
+pub async fn do_stop_recording(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    open_editor: bool,
+) -> AppResult<String> {
     // Read, do not take. `current_project` is the only thing preventing a second
     // `start_recording` (see the `Busy` guard), so it must stay in place until
     // the capture backend has actually stopped — clearing it up front is what
@@ -378,9 +393,11 @@ pub async fn stop_recording(app: AppHandle, state: State<'_, AppState>) -> AppRe
 
     // Capture is stopped and the take is real — safe to show the editor. Mic mux /
     // progressive remux above can still take a moment; the editor loads and waits
-    // on finalized.
-    if let Err(e) = windows::open_editor_window(&app, &project_id) {
-        tracing::warn!(%e, "failed to open editor window");
+    // on finalized. The automation path skips this so nothing steals focus.
+    if open_editor {
+        if let Err(e) = windows::open_editor_window(&app, &project_id) {
+            tracing::warn!(%e, "failed to open editor window");
+        }
     }
 
     let project = store.finalize(&project_id, &config, &artifacts)?;
@@ -391,6 +408,15 @@ pub async fn stop_recording(app: AppHandle, state: State<'_, AppState>) -> AppRe
         dropped = artifacts.stats.frames_dropped,
         secs = artifacts.stats.duration_seconds,
         "recording finalized"
+    );
+
+    // The take is fully on disk now — publish the final path so a polling driver
+    // knows the recording is complete and where to find it (idle + screenPath).
+    crate::automation::write_state(
+        &app,
+        "idle",
+        Some(project.id.clone()),
+        Some(artifacts.screen_path.to_string_lossy().into_owned()),
     );
 
     let _ = app.emit("project://finalized", &project.id);

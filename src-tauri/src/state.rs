@@ -65,6 +65,9 @@ impl AppState {
             // Swap tray items on state changes only — never on elapsed ticks.
             if let RecorderEvent::StateChanged { ref state } = event {
                 crate::tray::sync_for_state(&emit_handle, state);
+                // Mirror the transition into the automation status file so a
+                // headless driver can poll recorder state (see `automation`).
+                crate::automation::write_from_state(&emit_handle, state);
             }
             let channel = event.channel();
             if let Err(err) = emit_handle.emit(channel, &event) {
